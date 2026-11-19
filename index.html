@@ -24,25 +24,8 @@ img{max-width:100%}
   --f-display:"Marcellus","Cormorant Garamond",Georgia,serif;
   --f-body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
   --r:10px;
+  color-scheme:light;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0b111b; --surface:#131b28; --surface-2:#182131; --ink:#eef2f7; --ink-2:#b8c1ce; --muted:#7f8a9a;
-  --line:#232e3f; --axis:#36435a; --ring:rgba(255,255,255,.08);
-  --side:#070c15; --side-line:rgba(255,255,255,.06); --side-active:rgba(255,255,255,.06);
-  --bronze:#c49a5a; --bronze-soft:rgba(196,154,90,.16);
-  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767; --s-other:#4b5566;
-  --good-ink:#0ca30c;
-  --q0:#1b2433; --q1:#0d366b; --q2:#104281; --q3:#1c5cab; --q4:#2a78d6; --q5:#5598e7; --q6:#9ec5f4;
-  color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0b111b; --surface:#131b28; --surface-2:#182131; --ink:#eef2f7; --ink-2:#b8c1ce; --muted:#7f8a9a;
-  --line:#232e3f; --axis:#36435a; --ring:rgba(255,255,255,.08);
-  --side:#070c15; --side-line:rgba(255,255,255,.06); --side-active:rgba(255,255,255,.06);
-  --bronze:#c49a5a; --bronze-soft:rgba(196,154,90,.16);
-  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767; --s-other:#4b5566;
-  --good-ink:#0ca30c;
-  --q0:#1b2433; --q1:#0d366b; --q2:#104281; --q3:#1c5cab; --q4:#2a78d6; --q5:#5598e7; --q6:#9ec5f4;
-  color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{background:var(--bg)}
@@ -179,7 +162,12 @@ table.cmp tr.grp td{font-size:10.5px;letter-spacing:.12em;text-transform:upperca
 #tDx td.l,#tMd td.l,#tCvMed td.l,#tCvCmpMed td.l{white-space:normal;min-width:150px}
 #tRank th,#tDx th,#tMd th,#tCvMonth th,#tCvMed th,#tCvCmpMed th{white-space:normal;vertical-align:bottom;line-height:1.25}
 #tDx .share .bar,#tMd .share .bar{width:40px}
-#tDx th,#tMd th,#tRank th{max-width:110px}
+#tRank th{max-width:120px;min-width:64px}
+#tDx th,#tMd th{min-width:56px}
+td .who{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:10px;align-items:center}
+td .who:has(.small-tag) .avatar{grid-row:span 2}
+td .who .small-tag{grid-column:2;justify-self:start;margin:2px 0 0;font-size:10px;padding:0 5px}
+th{overflow-wrap:normal;word-break:normal}
 #tDx td,#tDx th,#tMd td,#tMd th{padding-inline:6px}
 #tDx,#tMd{font-size:12.5px}
 .g-cat{grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:12px}
@@ -1196,6 +1184,9 @@ function renderConversao(){
   tb.querySelectorAll('th.sortable').forEach(th=>th.onclick=()=>{const kk=th.dataset.k;if(st.k===kk)st.dir*=-1;else{st.k=kk;st.dir=kk==='name'?1:-1;}renderConversao();});
 }
 
+/* quebra de linha nos títulos de tabela depois de "/" (evita palavras cortadas) */
+function softBreakTh(root){(root||document).querySelectorAll('th').forEach(th=>{const w=document.createTreeWalker(th,NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode()){if(n.nodeValue.includes('/')&&!n.nodeValue.includes('/\u200b'))n.nodeValue=n.nodeValue.replace(/\//g,'/\u200b');}});}
+new MutationObserver(ms=>{for(const m of ms){if(m.target&&m.target.tagName==='TABLE'||m.target.closest&&m.target.closest('table'))softBreakTh(m.target.closest?m.target.closest('table')||m.target:m.target);}}).observe(document.querySelector('.main'),{childList:true,subtree:true});
 /* ---------- shell ---------- */
 const SEC={visao:['Visão geral',renderVisao,'Produção, atendimentos e ticket médio da clínica'],kpi:['Indicadores',renderKPI,'Faturamento por origem, AMHPDF, no-show, pacientes novos e ocupação da agenda'],medicos:['Médicos',renderMedicos,'Ranking justo por paciente, comparação e detalhe por profissional'],producao:['Produção',renderProducao,'Evolução mensal, dias da semana e calendário'],servicos:['Serviços',renderServicos,'O que é lançado, quanto produz e o que sai sem valor'],convenios:['Convênios',renderConvenios,'Ranking de convênios, mix de serviços e quem mais produz em cada serviço'],conversao:['Conversão',renderConversao,'Quantos pacientes consultados seguem para medicação, exames, laboratório e polissonografia'],radiologia:['Radiologia',renderRadiologia,'Ranking e ticket médio da Dra. Rachel e do Dr. Túlio, medidos pelos exames que executam'],operacional:['Operacional',renderOperacional,'Ritmo da agenda, retorno de pacientes e qualidade dos lançamentos']};
 function render(){
