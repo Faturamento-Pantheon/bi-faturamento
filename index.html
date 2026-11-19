@@ -696,14 +696,14 @@ function renderMedicos(){
   if(S.focus==null||!docs.find(m=>m.i===S.focus))S.focus=(elig.find(m=>m.rank===1)||docs[0]||{}).i;
   document.querySelectorAll('#lens button').forEach(b=>{b.setAttribute('aria-selected',b.dataset.l===S.lens);b.onclick=()=>{S.lens=b.dataset.l;S.sortK=LENS[S.lens].sort;S.sortDir=-1;renderMedicos();};});
   document.getElementById('rankHint').textContent=L.hint;
-  const k=S.sortK,dir=S.sortDir,cmpF=(a,b)=>k==='name'?dir*a.name.localeCompare(b.name):k==='rank'?(a.rank-b.rank):dir*(((a[k]??(dir<0?-1:9))-(b[k]??(dir<0?-1:9)))||(b.n-a.n));
-  const sorted=elig.slice().sort(cmpF),smallS=small.slice().sort(cmpF);
+  const k=S.sortK,dir=S.sortDir,cmpF=(a,b)=>k==='name'?dir*a.name.localeCompare(b.name):k==='rank'?(a.rank-b.rank):(dir*((a[k]??(dir<0?-1:9))-(b[k]??(dir<0?-1:9)))||(b.n-a.n));
+  const sorted=elig.slice().sort(cmpF),smallS=small.slice().sort(cmpF);sorted.forEach((m,i)=>m.pos=i+1);
   const maxShare=Math.max(...docs.map(m=>m.share),0.0001);
   const cols=[['rank','#','',null],['name','Médico solicitante','l',null]].concat(L.cols.map(c=>[c[0],c[1],'',c[2]]));
   const cell=(m,c)=>c[0]==='dias'?int(m.dias)+(m.est?'<span title="Sem agenda própria: estimado pelos dias com solicitação" style="color:var(--muted)">*</span>':''):c[0]==='share'?`<div class="share">${pct(m.share)}<span class="bar"><i style="width:${(m.share/maxShare*100).toFixed(1)}%"></i></span></div>`:(c[0]===L.sort?`<b>${c[3](m[c[0]])}</b>`:c[3](m[c[0]]));
-  let h='<thead><tr>'+cols.map(([key,lab,cl])=>{const s=key===k;return `<th class="sortable ${cl}" data-k="${key}" ${s?`aria-sort="${dir<0?'descending':'ascending'}"`:''}>${lab}${s&&key!=='rank'?` <span class="ar">${dir<0?'↓':'↑'}</span>`:''}</th>`;}).join('')+'<th>Comparar</th></tr></thead><tbody>';
+  let h='<thead><tr>'+cols.map(([key,lab,cl])=>{const s=key===k;return `<th class="sortable ${cl}" data-k="${key}" ${s?`aria-sort="${dir<0?'descending':'ascending'}"`:''}>${lab}${s&&key!=='rank'?` <span class="ar">${key==='name'?(dir<0?'Z→A':'A→Z'):(dir<0?'↓':'↑')}</span>`:''}</th>`;}).join('')+'<th>Comparar</th></tr></thead><tbody>';
   const rowHTML=(m,kind)=>{const muted=kind==='none',inC=S.cmp.includes(m.i);
-    return `<tr class="${muted?'muted':'click'}${m.i===S.focus&&!muted?' sel':''}${kind==='small'?' muted':''}" ${muted?'':`data-med="${m.i}" tabindex="0"`}><td>${m.rank?`<span class="rank ${m.rank<=3?'top':''}">${m.rank}</span>`:'—'}</td><td class="l"><div class="who"><span class="avatar">${muted?'?':initials(m.name)}</span>${esc(m.name)}${kind==='ok'&&S.lens!=='total'&&m.p<minP?'<span class="small-tag" title="Menos de 20 pacientes no período: a média pode variar muito">amostra pequena</span>':''}</div></td>${cols.slice(2).map(c=>`<td>${cell(m,c)}</td>`).join('')}<td>${muted?'':`<button class="chip cmp-btn" data-cmp="${m.i}" aria-pressed="${inC}" title="${inC?'Remover da comparação':'Adicionar à comparação'}" aria-label="${inC?'Remover da comparação':'Adicionar à comparação'}" style="min-width:34px;padding:4px 10px">${inC?'✓':'+'}</button>`}</td></tr>`;};
+    return `<tr class="${muted?'muted':'click'}${m.i===S.focus&&!muted?' sel':''}${kind==='small'?' muted':''}" ${muted?'':`data-med="${m.i}" tabindex="0"`}><td>${m.pos&&kind==='ok'?`<span class="rank ${m.pos<=3&&k!=='name'?'top':''}">${m.pos}</span>`:'—'}</td><td class="l"><div class="who"><span class="avatar">${muted?'?':initials(m.name)}</span>${esc(m.name)}${kind==='ok'&&S.lens!=='total'&&m.p<minP?'<span class="small-tag" title="Menos de 20 pacientes no período: a média pode variar muito">amostra pequena</span>':''}</div></td>${cols.slice(2).map(c=>`<td>${cell(m,c)}</td>`).join('')}<td>${muted?'':`<button class="chip cmp-btn" data-cmp="${m.i}" aria-pressed="${inC}" title="${inC?'Remover da comparação':'Adicionar à comparação'}" aria-label="${inC?'Remover da comparação':'Adicionar à comparação'}" style="min-width:34px;padding:4px 10px">${inC?'✓':'+'}</button>`}</td></tr>`;};
   h+=sorted.map(m=>rowHTML(m,'ok')).join('');
   if(smallS.length)h+=`<tr class="grp-row"><td colspan="${cols.length+1}" class="l" style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;padding-top:14px">Amostra pequena · menos de ${minP} pacientes no período (sem posição)</td></tr>`+smallS.map(m=>rowHTML(m,'small')).join('');
   // removido a pedido: fora do corpo clínico e sem médico não aparecem nos rankings
@@ -721,11 +721,11 @@ function renderMedicos(){
 
 function catTable(id,list,cols,st,rerender,minP){
   const k=st.k,dir=st.dir;const inat=list.filter(m=>!m.none&&INAT.has(m.i)),elig=list.filter(m=>!m.none&&!INAT.has(m.i)),small=[],none=list.find(m=>m.none);inat.forEach(m=>m.rank=null);
-  const by=(a,b)=>k==='name'?dir*a.name.localeCompare(b.name):dir*((a[k]-b[k])||(b.v-a.v));
+  const by=(a,b)=>k==='name'?dir*a.name.localeCompare(b.name):(dir*(a[k]-b[k])||(b.v-a.v));
   elig.sort(by).forEach((m,i)=>m.rank=i+1);small.sort(by);
   const mainKey=cols.find(c=>c[3])[0],mx=Math.max(...list.filter(m=>!m.none).map(m=>m[mainKey]),1);
-  let h='<thead><tr><th>#</th><th class="sortable l" data-k="name">Médico solicitante'+(k==='name'?' <span class="ar">'+(dir<0?'↓':'↑')+'</span>':'')+'</th>'+cols.map(c=>`<th class="sortable" data-k="${c[0]}" ${c[0]===k?`aria-sort="${dir<0?'descending':'ascending'}"`:''}>${c[1]}${c[0]===k?` <span class="ar">${dir<0?'↓':'↑'}</span>`:''}</th>`).join('')+'</tr></thead><tbody>';
-  const row=(m,muted)=>`<tr class="${muted?'muted':'click'}${m.i===S.focus&&!muted?' sel':''}" ${m.none?'':`data-med="${m.i}" tabindex="0"`}><td>${m.rank&&!muted?`<span class="rank ${m.rank<=3?'top':''}">${m.rank}</span>`:'—'}</td><td class="l"><div class="who"><span class="avatar">${m.none?'?':initials(m.name)}</span>${esc(m.name)}${!muted&&!m.none&&m.pAll<minP?'<span class="small-tag" title="Menos de 20 pacientes no período: a média pode variar muito">amostra pequena</span>':''}</div></td>`+cols.map(c=>{const v=c[2](m[c[0]]);if(c[3])return `<td><div class="share"><b>${v}</b><span class="bar"><i style="width:${(m[c[0]]/mx*100).toFixed(1)}%"></i></span></div></td>`;return `<td>${c[0]===k?'<b>'+v+'</b>':v}</td>`;}).join('')+'</tr>';
+  let h='<thead><tr><th>#</th><th class="sortable l" data-k="name">Médico solicitante'+(k==='name'?' <span class="ar">'+(dir<0?'Z→A':'A→Z')+'</span>':'')+'</th>'+cols.map(c=>`<th class="sortable" data-k="${c[0]}" ${c[0]===k?`aria-sort="${dir<0?'descending':'ascending'}"`:''}>${c[1]}${c[0]===k?` <span class="ar">${dir<0?'↓':'↑'}</span>`:''}</th>`).join('')+'</tr></thead><tbody>';
+  const row=(m,muted)=>`<tr class="${muted?'muted':'click'}${m.i===S.focus&&!muted?' sel':''}" ${m.none?'':`data-med="${m.i}" tabindex="0"`}><td>${m.rank&&!muted?`<span class="rank ${m.rank<=3&&k!=='name'?'top':''}">${m.rank}</span>`:'—'}</td><td class="l"><div class="who"><span class="avatar">${m.none?'?':initials(m.name)}</span>${esc(m.name)}${!muted&&!m.none&&m.pAll<minP?'<span class="small-tag" title="Menos de 20 pacientes no período: a média pode variar muito">amostra pequena</span>':''}</div></td>`+cols.map(c=>{const v=c[2](m[c[0]]);if(c[3])return `<td><div class="share"><b>${v}</b><span class="bar"><i style="width:${(m[c[0]]/mx*100).toFixed(1)}%"></i></span></div></td>`;return `<td>${c[0]===k?'<b>'+v+'</b>':v}</td>`;}).join('')+'</tr>';
   h+=elig.map(m=>row(m,false)).join('');
   if(small.length)h+=`<tr><td colspan="${cols.length+2}" class="l" style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;padding-top:14px">Amostra pequena · menos de ${minP} pacientes no período (sem posição)</td></tr>`+small.map(m=>row(m,true)).join('');
   // removido a pedido: fora do corpo clínico e sem médico não aparecem nos rankings
@@ -1047,7 +1047,7 @@ function renderConvenios(){
   document.getElementById('cvnKpis').innerHTML=K.map(([l,v,h])=>`<div class="card kpi"><span class="lbl">${l}</span><span class="val">${v}</span>${h?`<span style="font-size:12px;color:var(--muted)">${h}</span>`:''}</div>`).join('');
   document.getElementById('cvnPill').textContent=`${int(L.length)} convênios · ${rangeLabel(S.m0,S.m1)}`;
   document.getElementById('lgCvn').innerHTML=D.tipos.map((n,i)=>`<span><i style="background:${STACK_COLORS[i]}"></i>${n}</span>`).join('');
-  const st=S.cvnSort,k=st.k,dir=st.dir;const by=(a,b)=>k==='name'?dir*a.name.localeCompare(b.name):dir*((a[k]-b[k])||(b.v-a.v));
+  const st=S.cvnSort,k=st.k,dir=st.dir;const by=(a,b)=>k==='name'?dir*a.name.localeCompare(b.name):(dir*(a[k]-b[k])||(b.v-a.v));
   const big=L.filter(o=>o.p>=10&&o.name!=='Cortesia').sort(by),small=L.filter(o=>!(o.p>=10&&o.name!=='Cortesia')).sort(by);
   const mx=Math.max(...L.map(o=>o.v),1);
   const cols=[['v','Produção',money0],['share','Participação',null],['p','Pacientes',int],['a','Atendimentos',int],['tp','Ticket/paciente',money0],['ta','Ticket/atendimento',money0],['serv','% em serviços',pct]];
@@ -1064,7 +1064,7 @@ function renderConvenios(){
   seg.innerHTML=D.tipos.map((n,i)=>`<button data-c="${i}" aria-selected="${S.cvnCat===i}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${STACK_COLORS[i]};margin-right:6px"></span>${n}</button>`).join('');
   seg.querySelectorAll('button').forEach(b=>b.onclick=()=>{S.cvnCat=+b.dataset.c;renderConvenios();});
   const rowsAll=filt({tipo:-1}),cat=S.cvnCat,LS=cvnStats(rowsAll.filter(r=>r.t===cat)),totS=LS.reduce((a,o)=>a+o.v,0);
-  const st2=S.cvnSSort,k2=st2.k,d2=st2.dir;const by2=(a,b)=>k2==='name'?d2*a.name.localeCompare(b.name):d2*((a[k2]-b[k2])||(b.a-a.a));
+  const st2=S.cvnSSort,k2=st2.k,d2=st2.dir;const by2=(a,b)=>k2==='name'?d2*a.name.localeCompare(b.name):(d2*(a[k2]-b[k2])||(b.a-a.a));
   LS.forEach(o=>o.share=totS?o.v/totS:0);const mx2=Math.max(...LS.map(o=>o.v),1);
   const cols2=[['v','Produção no serviço',money0],['share','Participação no serviço',null],['a','Atendimentos',int],['p','Pacientes',int],['ta','Ticket/atendimento',money0],['tp','Ticket/paciente',money0]];
   const big2=LS.filter(o=>o.name!=='Cortesia'&&o.v>0).sort(by2),rest2=LS.filter(o=>!(o.name!=='Cortesia'&&o.v>0)).sort(by2);
@@ -1174,7 +1174,7 @@ function renderConversao(){
   const byMed=new Map();consRowsOf({med:-1}).forEach(r=>{if(RADS.has(r.md)||INAT.has(r.md))return;let a=byMed.get(r.md);if(!a){a=[];byMed.set(r.md,a);}a.push(r);});
   const list=[...byMed.entries()].map(([i,rs])=>{const cc=convCalc(rs,W);const o={i,name:D.medicos[i],none:i===NONE,pac:cc.pac,atend:cc.atend,any:cc.pac?cc.any/cc.pac:0,v:cc.v,vp:cc.pac?cc.v/cc.pac:0};cc.res.forEach((x,k)=>o['c'+k]=cc.pac?x.P.size/cc.pac:0);return o;});
   const st=S.cvSort,k=st.k,dir=st.dir;
-  const by=(a,b)=>k==='name'?dir*a.name.localeCompare(b.name):dir*((a[k]-b[k])||(b.pac-a.pac));
+  const by=(a,b)=>k==='name'?dir*a.name.localeCompare(b.name):(dir*(a[k]-b[k])||(b.pac-a.pac));
   const big=list.filter(o=>!o.none&&!INAT.has(o.i)).sort(by),small=[],none=list.find(o=>o.none);
   const cols=[['pac','Pacientes consultados',int],['atend','Consultas',int]].concat(CV_SERV.map((n,j)=>['c'+j,n,pct])).concat([['any','Algum serviço',pct],['v','Valor gerado',money0],['vp','Valor/paciente',money0]]);
   let t='<thead><tr><th>#</th><th class="sortable l" data-k="name">Médico</th>'+cols.map(c=>`<th class="sortable" data-k="${c[0]}" ${c[0]===k?`aria-sort="${dir<0?'descending':'ascending'}"`:''}>${c[1]}${c[0]===k?` <span class="ar">${dir<0?'↓':'↑'}</span>`:''}</th>`).join('')+'</tr></thead><tbody>';
